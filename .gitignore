@@ -4,8 +4,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.sqlite3
-db.sqlite3
 .env
+.env.*
+.env.local
 
 # Node / Vite
 node_modules/
