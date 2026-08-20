@@ -1,0 +1,77 @@
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+    margin: 1.5cm !important;
+    padding: 0 !important;
+  }
+
+  .sidebar, .top-header, .btn, .no-print, .nav-links, .shift-indicator-box {
+    display: none !important;
+  }
+
+  .app-container {
+    display: block !important;
+    background: #fff !important;
+  }
+
+  .main-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .content-body {
+    padding: 0 !important;
+  }
+
+  .print-report-container {
+    display: block !important;
+    width: 100% !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .print-report-container * {
+    color: #000 !important;
+  }
+
+  /* Grid details showing stats should look neat in black and white */
+  .dashboard-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 15px !important;
+    margin-bottom: 25px !important;
+  }
+
+  .stat-card {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    color: #000 !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+  }
+
+  .stat-card::before {
+    display: none !important;
+  }
+
+  .data-table {
+    border: 1px solid #000 !important;
+  }
+
+  .data-table th {
+    background-color: #f0f0f0 !important;
+    color: #000 !important;
+    border-bottom: 1px solid #000 !important;
+  }
+
+  .data-table td {
+    border-bottom: 1px solid #ccc !important;
+  }
+}
+
+/* Styled wrapper component for print reports */
+.print-report-container {
+  display: none; /* Hidden on screen */
+}
