@@ -80,11 +80,11 @@ WSGI_APPLICATION = 'parking_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-if os.getenv('DATABASE_ENGINE') == 'mysql' or os.getenv('DATABASE_NAME_MYSQL'):
+if os.getenv('DATABASE_ENGINE') == 'mysql' or os.getenv('DATABASE_NAME_MYSQL') or os.getenv('DATABASE_NAME'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DATABASE_NAME_MYSQL'),
+            'NAME': os.getenv('DATABASE_NAME_MYSQL') or os.getenv('DATABASE_NAME'),
             'USER': os.getenv('DATABASE_USER'),
             'PASSWORD': os.getenv('DATABASE_PASSWORD'),
             'HOST': os.getenv('DATABASE_HOST', '127.0.0.1'),
