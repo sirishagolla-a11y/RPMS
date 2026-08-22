@@ -92,6 +92,7 @@ if os.getenv('DATABASE_ENGINE') == 'mysql' or os.getenv('DATABASE_NAME_MYSQL'):
             'OPTIONS': {
                 'charset': 'utf8mb4',
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'ssl': {},
             }
         }
     }
