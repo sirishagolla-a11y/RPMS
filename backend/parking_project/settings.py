@@ -30,6 +30,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-(^&4($qi8bzze6)+cmb
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 't', 'yes', 'y')
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',') if host.strip()]
+if 'rpms-backend-av4j.onrender.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('rpms-backend-av4j.onrender.com')
 
 
 # Application definition
