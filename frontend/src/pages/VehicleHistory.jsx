@@ -1,147 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
-import '../styles/App.css';
+import { useState, useEffect } from 'react'
+import { fetchSessions } from '../services/api'
 
-export default function VehicleHistory() {
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+function VehicleHistory() {
+  const [sessions, setSessions] = useState([])
 
   useEffect(() => {
-    fetchHistory('');
-  }, []);
+    loadSessions()
+  }, [])
 
-  const fetchHistory = async (searchQuery) => {
-    setLoading(true);
+  const loadSessions = async () => {
     try {
-      const data = await apiService.getHistory(searchQuery);
-      setHistory(data);
-      setError('');
+      const data = await fetchSessions()
+      setSessions(data)
     } catch (err) {
-      console.error('Failed to fetch parking history:', err);
-      setError('Could not load parking record history.');
-    } finally {
-      setLoading(false);
+      console.error(err)
     }
-  };
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    fetchHistory(value);
-  };
-
-  const filteredHistory = history.filter((item) => {
-    if (statusFilter === 'ALL') return true;
-    return item.status === statusFilter;
-  });
+  }
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontFamily: 'var(--font-heading)' }}>Vehicle Parking History</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Global log of all vehicle entries, exits, and payment records</p>
-      </div>
+    <div className="page-card">
+      <h2>Vehicle History log</h2>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Overview of all past vehicle parking sessions.</p>
 
-      {error && (
-        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-danger)', color: 'var(--accent-danger)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Filter controls */}
-      <div className="history-filter-panel">
-        <div className="filter-group" style={{ flex: '2 1 300px' }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Search Vehicle / Receipt</label>
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search by vehicle number..."
-            value={query}
-            onChange={handleSearchChange}
-          />
-        </div>
-
-        <div className="filter-group">
-          <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Filter by Status</label>
-          <select
-            className="form-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">All Records</option>
-            <option value="PARKED">Currently Parked</option>
-            <option value="RELEASED">Released / Completed</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="card">
-        {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>Loading history...</p>
-        ) : filteredHistory.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-            No parking records matching criteria.
-          </p>
-        ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Receipt Number</th>
-                  <th>Vehicle Number</th>
-                  <th>Type</th>
-                  <th>Entry Time</th>
-                  <th>Exit Time</th>
-                  <th>Fee Amount</th>
-                  <th>Payment Method</th>
-                  <th>Status</th>
+      <div className="premium-table-wrapper">
+        <table className="premium-table">
+          <thead>
+            <tr>
+              <th>Receipt No</th>
+              <th>Vehicle Number</th>
+              <th>Type</th>
+              <th>Entry Time</th>
+              <th>Exit Time</th>
+              <th>Fee</th>
+              <th>Payment Method</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.length > 0 ? (
+              sessions.map((session) => (
+                <tr key={session.id}>
+                  <td>{session.receipt_number}</td>
+                  <td style={{ fontWeight: 'bold' }}>{session.vehicle_number}</td>
+                  <td>{session.vehicle_type}</td>
+                  <td>{new Date(session.entry_time).toLocaleString()}</td>
+                  <td>{session.exit_time ? new Date(session.exit_time).toLocaleString() : 'N/A'}</td>
+                  <td>₹{session.parking_fee}</td>
+                  <td>{session.payment_method || 'N/A'}</td>
+                  <td>
+                    <span className={`status-badge ${session.status === 'parked' ? 'pending' : 'active'}`}>
+                      {session.status}
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredHistory.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {item.receipt_number}
-                    </td>
-                    <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                      {item.vehicle_number}
-                    </td>
-                    <td>
-                      <span className="badge badge-warning">
-                        {item.vehicle_type_details?.vehicle_type}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '0.85rem' }}>
-                      {new Date(item.entry_time).toLocaleString()}
-                    </td>
-                    <td style={{ fontSize: '0.85rem' }}>
-                      {item.exit_time ? new Date(item.exit_time).toLocaleString() : '-'}
-                    </td>
-                    <td style={{ fontWeight: 'bold', color: item.fee_amount ? 'var(--accent-success)' : 'inherit' }}>
-                      {item.fee_amount ? `₹${parseFloat(item.fee_amount).toFixed(2)}` : '-'}
-                    </td>
-                    <td>
-                      {item.payment_method ? (
-                        <span className="badge" style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
-                          {item.payment_method}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td>
-                      <span className={`badge ${item.status === 'PARKED' ? 'badge-warning' : 'badge-success'}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No session logs.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
-  );
+  )
 }
+
+export default VehicleHistory

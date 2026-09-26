@@ -1,286 +1,326 @@
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
-import '../styles/App.css';
-import '../styles/report-print.css';
+import { useState, useEffect } from 'react'
+import { fetchReports } from '../services/api'
 
-export default function Reports() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+function Reports() {
+  const [period, setPeriod] = useState('today')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [reportsData, setReportsData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState(null)
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    loadReports()
+  }, [period])
 
-  const fetchStats = async () => {
-    setLoading(true);
+  const loadReports = async () => {
+    setLoading(true)
+    setErrorMsg(null)
     try {
-      const data = await apiService.getDashboardStats();
-      setStats(data);
-      setError('');
+      const data = await fetchReports(period, startDate, endDate)
+      setReportsData(data)
     } catch (err) {
-      console.error('Failed to load reports data:', err);
-      setError('Could not fetch report metrics.');
+      setErrorMsg(err.message || 'Failed to load report metrics')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handlePrintReport = () => {
-    window.print();
-  };
+  const handleCustomSearch = (e) => {
+    e.preventDefault()
+    if (period === 'custom') {
+      loadReports()
+    }
+  }
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      {/* Header & Controls */}
+      <div className="page-card" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-heading)' }}>Reports & Analytics</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Financial summary and vehicle movement reports</p>
+          <h2 style={{ margin: 0 }}>Operational & Revenue Reports</h2>
+          <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Detailed analytics, capacity utilization, payment breakdowns, and shift logs.</p>
         </div>
 
-        <button className="btn btn-secondary" onClick={handlePrintReport}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 6 2 18 2 18 9" />
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-            <rect x="6" y="14" width="12" height="8" />
-          </svg>
-          Print Formal Report
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+          <select
+            className="form-select"
+            style={{ width: 'auto', padding: '10px 16px' }}
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+          >
+            <option value="today">Today's Report</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="month">This Month</option>
+            <option value="custom">Custom Date Range</option>
+          </select>
+
+          {period === 'custom' && (
+            <form onSubmit={handleCustomSearch} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="date"
+                required
+                className="form-input"
+                style={{ width: 'auto', padding: '8px 12px' }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span style={{ color: 'var(--text-muted)' }}>to</span>
+              <input
+                type="date"
+                required
+                className="form-input"
+                style={{ width: 'auto', padding: '8px 12px' }}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+              <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                Filter
+              </button>
+            </form>
+          )}
+
+          <button className="btn-secondary" style={{ padding: '10px 18px' }} onClick={loadReports} disabled={loading}>
+            🔄 {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <button className="btn-secondary" style={{ padding: '10px 18px' }} onClick={() => window.print()}>
+            🖨️ Print Report
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-danger)', color: 'var(--accent-danger)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-          {error}
+      {errorMsg && (
+        <div style={{ padding: '16px', borderRadius: '12px', background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c', fontWeight: '600' }}>
+          ⚠️ {errorMsg}
         </div>
       )}
 
-      {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>Loading report metrics...</p>
-      ) : stats && (
-        <div>
+      {loading || !reportsData ? (
+        <div className="page-card" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+          <p>Loading real-time report metrics from database...</p>
+        </div>
+      ) : (
+        <>
+          {/* Key Summary KPIs */}
           <div className="dashboard-grid">
-            <div className="card stat-card success">
-              <div className="stat-header">
-                <span>Today's Revenue</span>
-                <span className="stat-icon">💰</span>
-              </div>
-              <div className="stat-value">₹{stats.today_revenue?.total?.toFixed(2)}</div>
-              <div className="stat-footer">Total payments collected today</div>
+            <div className="metric-card">
+              <span className="metric-title">Total Entries ({reportsData.period.toUpperCase()})</span>
+              <span className="metric-value">{reportsData.summary.total_entries}</span>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>Check-ins recorded</span>
             </div>
-
-            <div className="card stat-card info">
-              <div className="stat-header">
-                <span>Cash Collection</span>
-                <span className="stat-icon">💵</span>
-              </div>
-              <div className="stat-value">₹{stats.today_revenue?.cash?.toFixed(2)}</div>
-              <div className="stat-footer">Physical cash received</div>
+            <div className="metric-card">
+              <span className="metric-title">Total Exits</span>
+              <span className="metric-value">{reportsData.summary.total_exits}</span>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>Releases completed</span>
             </div>
-
-            <div className="card stat-card warning">
-              <div className="stat-header">
-                <span>UPI Collection</span>
-                <span className="stat-icon">📱</span>
-              </div>
-              <div className="stat-value">₹{stats.today_revenue?.upi?.toFixed(2)}</div>
-              <div className="stat-footer">Digital UPI payments</div>
+            <div className="metric-card">
+              <span className="metric-title">Currently Occupied</span>
+              <span className="metric-value" style={{ color: 'var(--accent-primary)' }}>{reportsData.summary.current_parked}</span>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>Vehicles inside stand</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-title">Period Revenue</span>
+              <span className="metric-value" style={{ color: 'var(--success)' }}>₹{reportsData.summary.total_revenue.toFixed(2)}</span>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>Casual fees + pass payments</span>
             </div>
           </div>
 
-          <div className="dashboard-grid">
-            <div className="card stat-card">
-              <div className="stat-header">
-                <span>Vehicles Inside</span>
-                <span className="stat-icon">🅿️</span>
+          {/* Utilization & Capacity Bar */}
+          <div className="page-card">
+            <h3 style={{ margin: '0 0 16px 0' }}>🅿️ Parking Capacity & Utilization</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600' }}>Total Capacity:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>{reportsData.utilization.total_capacity} Slots</div>
               </div>
-              <div className="stat-value">{stats.current_inside}</div>
-              <div className="stat-footer">Active parking inventory</div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600' }}>Occupied Spaces:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--accent-primary)' }}>{reportsData.utilization.current_occupied} Vehicles</div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600' }}>Available Spaces:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>{reportsData.utilization.available_spaces} Slots</div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600' }}>Occupancy Rate:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: reportsData.utilization.occupancy_percentage > 85 ? 'var(--danger)' : 'var(--success)' }}>
+                  {reportsData.utilization.occupancy_percentage}%
+                </div>
+              </div>
             </div>
 
-            <div className="card stat-card success">
-              <div className="stat-header">
-                <span>Today's Entries</span>
-                <span className="stat-icon">📥</span>
-              </div>
-              <div className="stat-value">{stats.today_entries}</div>
-              <div className="stat-footer">Vehicles parked today</div>
-            </div>
-
-            <div className="card stat-card danger">
-              <div className="stat-header">
-                <span>Today's Exits</span>
-                <span className="stat-icon">📤</span>
-              </div>
-              <div className="stat-value">{stats.today_exits}</div>
-              <div className="stat-footer">Vehicles checked out today</div>
-            </div>
-          </div>
-
-          <div className="dashboard-grid" style={{ marginTop: '1.5rem' }}>
-            <div className="card stat-card success">
-              <div className="stat-header">
-                <span>Monthly Pass Report</span>
-                <span className="stat-icon">🗓️</span>
-              </div>
-              <div className="stat-value">{stats.total_monthly_customers || 0}</div>
-              <div className="stat-footer">Total monthly customers</div>
-            </div>
-
-            <div className="card stat-card warning">
-              <div className="stat-header">
-                <span>Paid Customers</span>
-                <span className="stat-icon">✅</span>
-              </div>
-              <div className="stat-value">{stats.paid_monthly_customers || 0}</div>
-              <div className="stat-footer">Customers with paid subscriptions</div>
-            </div>
-
-            <div className="card stat-card danger">
-              <div className="stat-header">
-                <span>Pending Customers</span>
-                <span className="stat-icon">⚠️</span>
-              </div>
-              <div className="stat-value">{stats.pending_monthly_customers || 0}</div>
-              <div className="stat-footer">Customers with pending payments</div>
-            </div>
-
-            <div className="card stat-card info">
-              <div className="stat-header">
-                <span>Monthly Collection</span>
-                <span className="stat-icon">💵</span>
-              </div>
-              <div className="stat-value">₹{stats.monthly_revenue?.toFixed(2) || '0.00'}</div>
-              <div className="stat-footer">Paid monthly subscriptions amount</div>
+            {/* Progress Bar */}
+            <div style={{ height: '14px', background: '#e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min(100, reportsData.utilization.occupancy_percentage)}%`,
+                background: reportsData.utilization.occupancy_percentage > 85 ? 'var(--danger)' : 'var(--accent-gradient)',
+                borderRadius: '10px',
+                transition: 'width 0.4s ease'
+              }}></div>
             </div>
           </div>
 
-          <div className="dashboard-grid" style={{ marginTop: '1.5rem' }}>
-            <div className="card stat-card warning">
-              <div className="stat-header">
-                <span>Casual Parking Report</span>
-                <span className="stat-icon">🚗</span>
+          {/* Revenue Breakdown & Vehicle Breakdown Side-by-Side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {/* Revenue by Payment Type */}
+            <div className="page-card">
+              <h3 style={{ margin: '0 0 16px 0' }}>💳 Payment Type & Revenue Breakdown</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <span>💵 Cash Payments ({reportsData.payment_breakdown.cash.count} Exits)</span>
+                  <strong style={{ color: 'var(--success)' }}>₹{reportsData.payment_breakdown.cash.revenue.toFixed(2)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <span>📱 UPI Digital Payments ({reportsData.payment_breakdown.upi.count} Exits)</span>
+                  <strong style={{ color: 'var(--info)' }}>₹{reportsData.payment_breakdown.upi.revenue.toFixed(2)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <span>🎟️ Monthly Subscriber Visits ({reportsData.payment_breakdown.monthly_free.count} Free Entries)</span>
+                  <strong style={{ color: 'var(--accent-primary)' }}>₹0.00 (Pass Covered)</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #86efac' }}>
+                  <span>📅 Monthly Pass Renewals Revenue</span>
+                  <strong style={{ color: '#15803d' }}>₹{reportsData.payment_breakdown.monthly_pass_revenue.toFixed(2)}</strong>
+                </div>
               </div>
-              <div className="stat-value">{stats.casual_vehicle_count || 0}</div>
-              <div className="stat-footer">Casual vehicles this month</div>
             </div>
 
-            <div className="card stat-card info">
-              <div className="stat-header">
-                <span>Casual Revenue</span>
-                <span className="stat-icon">💰</span>
-              </div>
-              <div className="stat-value">₹{stats.casual_revenue?.toFixed(2) || '0.00'}</div>
-              <div className="stat-footer">Casual parking revenue this month</div>
-            </div>
+            {/* Vehicle Type Distribution */}
+            <div className="page-card">
+              <h3 style={{ margin: '0 0 16px 0' }}>🚗 Vehicle Category Breakdown</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>Car / SUV</span>
+                    <strong>{reportsData.vehicle_breakdown.car} vehicles</strong>
+                  </div>
+                  <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '6px' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${reportsData.summary.total_entries > 0 ? (reportsData.vehicle_breakdown.car / reportsData.summary.total_entries) * 100 : 0}%`,
+                      background: '#4f46e5',
+                      borderRadius: '6px'
+                    }}></div>
+                  </div>
+                </div>
 
-            <div className="card stat-card success">
-              <div className="stat-header">
-                <span>Combined Revenue</span>
-                <span className="stat-icon">📈</span>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>Bike / Two Wheeler</span>
+                    <strong>{reportsData.vehicle_breakdown.bike} vehicles</strong>
+                  </div>
+                  <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '6px' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${reportsData.summary.total_entries > 0 ? (reportsData.vehicle_breakdown.bike / reportsData.summary.total_entries) * 100 : 0}%`,
+                      background: '#10b981',
+                      borderRadius: '6px'
+                    }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span>Truck / Bus / Heavy Vehicle</span>
+                    <strong>{reportsData.vehicle_breakdown.truck} vehicles</strong>
+                  </div>
+                  <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '6px' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${reportsData.summary.total_entries > 0 ? (reportsData.vehicle_breakdown.truck / reportsData.summary.total_entries) * 100 : 0}%`,
+                      background: '#f59e0b',
+                      borderRadius: '6px'
+                    }}></div>
+                  </div>
+                </div>
               </div>
-              <div className="stat-value">₹{stats.total_revenue?.toFixed(2) || '0.00'}</div>
-              <div className="stat-footer">Monthly + casual revenue</div>
             </div>
           </div>
 
-          {/* Breakdown by vehicle type */}
-          <div className="card" style={{ marginTop: '1.5rem' }}>
-            <h3 className="section-title">
-              Currently Parked Breakdown
-              <span>By Vehicle Type</span>
-            </h3>
+          {/* Daily Trends Visualization Bar Chart */}
+          <div className="page-card">
+            <h3 style={{ margin: '0 0 16px 0' }}>📈 Daily Traffic & Revenue Trends</h3>
+            {reportsData.daily_trends.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '180px', paddingTop: '20px', overflowX: 'auto' }}>
+                {reportsData.daily_trends.map((item, idx) => {
+                  const maxEntries = Math.max(1, ...reportsData.daily_trends.map(t => t.entries))
+                  const barHeight = Math.max(10, (item.entries / maxEntries) * 140)
+                  return (
+                    <div key={idx} style={{ flex: '1', minWidth: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-primary)' }}>{item.entries}</span>
+                      <div style={{ width: '100%', height: `${barHeight}px`, background: 'var(--accent-gradient)', borderRadius: '6px 6px 0 0' }}></div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{item.date}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', margin: '20px 0' }}>No daily trend data available for selected filter.</p>
+            )}
+          </div>
 
-            <div className="table-container">
-              <table className="data-table">
+          {/* Shift Report Section */}
+          <div className="page-card">
+            <h3 style={{ margin: '0 0 16px 0' }}>⏱️ Operator Duty Shift Reports</h3>
+            {reportsData.shift_report.active_shift ? (
+              <div style={{ padding: '16px', borderRadius: '12px', background: '#f0fdf4', border: '1.5px solid #86efac', marginBottom: '20px' }}>
+                <span className="status-badge active">CURRENT OPEN SHIFT</span>
+                <h4 style={{ margin: '8px 0 4px 0', color: '#14532d' }}>Operator: {reportsData.shift_report.active_shift.operator_name}</h4>
+                <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>
+                  Started: {new Date(reportsData.shift_report.active_shift.start_time).toLocaleString()}
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>No active shift open currently.</p>
+            )}
+
+            <h4 style={{ margin: '0 0 12px 0' }}>Recent Shift Handovers</h4>
+            <div className="premium-table-wrapper">
+              <table className="premium-table">
                 <thead>
                   <tr>
-                    <th>Vehicle Type</th>
-                    <th>Count Inside</th>
+                    <th>Shift ID</th>
+                    <th>Operator Name</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Entries</th>
+                    <th>Exits</th>
+                    <th>Revenue Handover</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.keys(stats.current_breakdown || {}).length === 0 ? (
-                    <tr>
-                      <td colSpan="2" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No vehicles currently inside.
-                      </td>
-                    </tr>
-                  ) : (
-                    Object.entries(stats.current_breakdown).map(([type, count]) => (
-                      <tr key={type}>
-                        <td style={{ fontWeight: 'bold' }}>{type}</td>
+                  {reportsData.shift_report.recent_shifts.length > 0 ? (
+                    reportsData.shift_report.recent_shifts.map((s) => (
+                      <tr key={s.id}>
+                        <td>#{s.id}</td>
+                        <td style={{ fontWeight: 'bold' }}>{s.operator_name}</td>
+                        <td>{new Date(s.start_time).toLocaleTimeString()}</td>
+                        <td>{s.end_time ? new Date(s.end_time).toLocaleTimeString() : 'N/A'}</td>
+                        <td>{s.total_entries}</td>
+                        <td>{s.total_exits}</td>
+                        <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>₹{s.total_revenue}</td>
                         <td>
-                          <span className="badge badge-warning" style={{ fontSize: '0.9rem' }}>
-                            {count}
+                          <span className={`status-badge ${s.status === 'OPEN' ? 'active' : 'expired'}`}>
+                            {s.status}
                           </span>
                         </td>
                       </tr>
                     ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No shift records found.</td>
+                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
-
-          {/* Printable Report View (Visible when printing A4 layout) */}
-          <div className="print-report-container">
-            <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px' }}>
-              <h1 style={{ textAlign: 'center', margin: '0 0 5px 0' }}>RAILWAY PARKING SYSTEM</h1>
-              <h3 style={{ textAlign: 'center', margin: '0 0 20px 0', color: '#555' }}>DAILY REVENUE & MOVEMENT REPORT</h3>
-              <p style={{ textAlign: 'right', fontSize: '0.9rem' }}>Generated: {new Date().toLocaleString()}</p>
-              <hr style={{ margin: '15px 0' }} />
-
-              <h4>1. Revenue Summary</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                <thead>
-                  <tr style={{ background: '#f2f2f2' }}>
-                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Category</th>
-                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Total Daily Revenue</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>₹{stats.today_revenue?.total?.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>- Cash Revenue</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>₹{stats.today_revenue?.cash?.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>- UPI / Online Revenue</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>₹{stats.today_revenue?.upi?.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <h4>2. Traffic Movement</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                <thead>
-                  <tr style={{ background: '#f2f2f2' }}>
-                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Metric</th>
-                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Vehicles Currently Inside</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>{stats.current_inside}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Today's Total Entries</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>{stats.today_entries}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>Today's Total Exits</td>
-                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'right' }}>{stats.today_exits}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
-  );
+  )
 }
+
+export default Reports

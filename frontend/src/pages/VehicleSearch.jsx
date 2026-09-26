@@ -1,142 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/api';
-import '../styles/App.css';
+import { useState } from 'react'
+import { fetchSessions } from '../services/api'
 
-export default function VehicleSearch() {
-  const [query, setQuery] = useState('');
-  const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+function VehicleSearch() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searched, setSearched] = useState(false)
 
-  useEffect(() => {
-    fetchParkedVehicles('');
-  }, []);
-
-  const fetchParkedVehicles = async (searchQuery) => {
-    setLoading(true);
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!query) return
     try {
-      const data = await apiService.searchParked(searchQuery);
-      setVehicles(data);
-      setError('');
+      const data = await fetchSessions()
+      const filtered = data.filter(s => s.vehicle_number.toLowerCase().includes(query.toLowerCase()))
+      setResults(filtered)
+      setSearched(true)
     } catch (err) {
-      console.error('Failed to search parked vehicles:', err);
-      setError('Could not fetch active parked vehicles.');
-    } finally {
-      setLoading(false);
+      alert(err.message)
     }
-  };
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    fetchParkedVehicles(value);
-  };
+  }
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontFamily: 'var(--font-heading)' }}>Currently Parked Vehicles</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Real-time inventory of vehicles inside the parking lot</p>
-        </div>
+    <div className="page-card">
+      <h2>Search Vehicle Database</h2>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Locate details of active parking sessions or past logs.</p>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-secondary" onClick={() => fetchParkedVehicles(query)}>
-            🔄 Refresh List
-          </button>
-        </div>
-      </div>
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Enter Vehicle Number (e.g. AP39AB1234)..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value.toUpperCase())}
+        />
+        <button type="submit" className="btn-primary">Search</button>
+      </form>
 
-      {error && (
-        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-danger)', color: 'var(--accent-danger)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Search Input Bar */}
-      <div className="search-bar-container">
-        <div className="search-input-wrapper">
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search by vehicle number or receipt number..."
-            value={query}
-            onChange={handleSearchChange}
-          />
-        </div>
-      </div>
-
-      <div className="card">
-        {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>Loading active vehicles...</p>
-        ) : vehicles.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-            No vehicles currently parked inside.
-          </p>
-        ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Vehicle Number</th>
-                  <th>Vehicle Type</th>
-                  <th>Receipt Number</th>
-                  <th>Entry Date & Time</th>
-                  <th>Time Elapsed</th>
-                  <th>Customer Info</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vehicles.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                      {item.vehicle_number}
-                    </td>
+      {searched && (
+        <div className="premium-table-wrapper">
+          <table className="premium-table">
+            <thead>
+              <tr>
+                <th>Receipt No</th>
+                <th>Vehicle Number</th>
+                <th>Type</th>
+                <th>Entry Time</th>
+                <th>Exit Time</th>
+                <th>Charge</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.length > 0 ? (
+                results.map((session) => (
+                  <tr key={session.id}>
+                    <td>{session.receipt_number}</td>
+                    <td style={{ fontWeight: 'bold' }}>{session.vehicle_number}</td>
+                    <td>{session.vehicle_type}</td>
+                    <td>{new Date(session.entry_time).toLocaleString()}</td>
+                    <td>{session.exit_time ? new Date(session.exit_time).toLocaleString() : 'N/A'}</td>
+                    <td>₹{session.parking_fee}</td>
                     <td>
-                      <span className="badge badge-warning">
-                        {item.vehicle_type_details?.vehicle_type}
+                      <span className={`status-badge ${session.status === 'parked' ? 'pending' : 'active'}`}>
+                        {session.status}
                       </span>
-                    </td>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {item.receipt_number}
-                    </td>
-                    <td>
-                      {new Date(item.entry_time).toLocaleString()}
-                    </td>
-                    <td>
-                      <span className="badge badge-success">
-                        {item.duration_minutes} Mins
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {item.customer_name ? (
-                        <div>
-                          <div>{item.customer_name}</div>
-                          {item.customer_phone && <div style={{ color: 'var(--text-muted)' }}>{item.customer_phone}</div>}
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>-</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-primary"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                        onClick={() => navigate('/release')}
-                      >
-                        Release Vehicle
-                      </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No matches found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  );
+  )
 }
+
+export default VehicleSearch

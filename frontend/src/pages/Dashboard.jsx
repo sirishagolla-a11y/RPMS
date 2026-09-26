@@ -1,189 +1,135 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/api';
-import '../styles/App.css';
+import { useState, useEffect } from 'react'
+import { fetchDashboardStats } from '../services/api'
 
-export default function Dashboard({ currentShift }) {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+function Dashboard() {
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardData();
-    // Run daily reminders silently on load to update expired status/logs
-    apiService.triggerDailyReminders().catch(err => console.error('Reminders check failed:', err));
-  }, []);
+    loadStats()
+    const interval = setInterval(loadStats, 10000) // update stats every 10s
+    return () => clearInterval(interval)
+  }, [])
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const loadStats = async () => {
     try {
-      const data = await apiService.getDashboardStats();
-      setStats(data);
-      setError('');
+      const data = await fetchDashboardStats()
+      setStats(data)
+      setLoading(false)
     } catch (err) {
-      console.error('Failed to load dashboard:', err);
-      setError('Could not connect to backend server. Make sure Django server is running.');
-    } finally {
-      setLoading(false);
+      console.error(err)
     }
-  };
+  }
 
-  const isShiftOpen = currentShift?.active;
+  if (loading || !stats) {
+    return (
+      <div className="page-card" style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+        <div className="loading-spinner" style={spinnerStyle}></div>
+        <span style={{ marginLeft: '12px', color: 'var(--text-muted)' }}>Loading live dashboard metrics...</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="animate-fade-in" style={{ padding: '1rem' }}>
-      {/* Top Banner / Operator status */}
-      <div className="card" style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(19, 28, 49, 0.9))', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '0.25rem', fontFamily: 'var(--font-heading)' }}>
-              Railway Parking Control Center
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Operator: <strong style={{ color: 'var(--text-primary)' }}>{isShiftOpen ? currentShift.shift.operator_name : 'No Shift Active'}</strong> |
-              Shift Date: <strong>{isShiftOpen ? currentShift.shift.shift_date : 'Offline'}</strong>
-            </p>
-          </div>
-          <button className="btn btn-secondary" onClick={fetchDashboardData}>🔄 Refresh Data</button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div>
+        <h2 style={{ margin: 0 }}>RPMS Dashboard Overview</h2>
+        <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Live monitoring of station parking slots, revenue, and active subscriptions.</p>
+      </div>
+
+      {/* Casual & Operation Stats */}
+      <div className="dashboard-grid">
+        <div className="metric-card">
+          <span className="metric-title">Currently Parked</span>
+          <span className="metric-value" style={{ color: '#6366f1' }}>{stats.currently_parked}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Active sessions inside station</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-title">Today's Entries</span>
+          <span className="metric-value">{stats.today_entries}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Vehicles checked-in today</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-title">Today's Exits</span>
+          <span className="metric-value">{stats.today_exits}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Vehicles released today</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-title">Today's Revenue</span>
+          <span className="metric-value" style={{ color: '#10b981' }}>₹{stats.today_revenue.toFixed(2)}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>Casual fees + paid passes</span>
         </div>
       </div>
 
-      {error && (
-        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-danger)', color: 'var(--accent-danger)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-          {error}
+      {/* Monthly Subscriptions Metrics */}
+      <h3 style={{ margin: '8px 0 0 0', color: 'var(--accent-primary)' }}>Monthly Pass Operations</h3>
+      <div className="dashboard-grid">
+        <div className="metric-card">
+          <span className="metric-title">Total Monthly Customers</span>
+          <span className="metric-value">{stats.monthly_stats.total_customers}</span>
         </div>
-      )}
-
-      {/* Quick Action Navigation Grid */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Quick Actions</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={() => navigate('/entry')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>📥</span>
-            <span>Park Vehicle</span>
-          </button>
-          <button className="btn btn-success" onClick={() => navigate('/release')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>📤</span>
-            <span>Release Vehicle</span>
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/shift')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderColor: 'var(--accent-info)' }}>
-            <span style={{ fontSize: '1.5rem' }}>🎫</span>
-            <span>Monthly Pass</span>
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/history')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>📜</span>
-            <span>Vehicle History</span>
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/reports')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>📈</span>
-            <span>Reports</span>
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/search')} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>🔍</span>
-            <span>Settings / Search</span>
-          </button>
+        <div className="metric-card">
+          <span className="metric-title">Active Passes</span>
+          <span className="metric-value" style={{ color: '#10b981' }}>{stats.monthly_stats.active_customers}</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-title">Expired Passes</span>
+          <span className="metric-value" style={{ color: '#ef4444' }}>{stats.monthly_stats.expired_customers}</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-title">Pending Payments</span>
+          <span className="metric-value" style={{ color: '#f59e0b' }}>{stats.monthly_stats.pending_payments}</span>
         </div>
       </div>
 
-      {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>Loading statistics...</p>
-      ) : stats && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Top Cards: Core Parking Metrics */}
-          <div>
-            <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Core Parking Metrics</h3>
-            <div className="dashboard-grid">
-              <div className="card stat-card warning">
-                <div className="stat-header">Currently Parked</div>
-                <div className="stat-value">{stats.current_inside}</div>
-                <div className="stat-footer">Vehicles inside lot</div>
-              </div>
-              <div className="card stat-card success">
-                <div className="stat-header">Today's Entries</div>
-                <div className="stat-value">{stats.today_entries}</div>
-                <div className="stat-footer">Checked in today</div>
-              </div>
-              <div className="card stat-card danger">
-                <div className="stat-header">Today's Exits</div>
-                <div className="stat-value">{stats.today_exits}</div>
-                <div className="stat-footer">Released today</div>
-              </div>
-              <div className="card stat-card info">
-                <div className="stat-header">Today's Revenue</div>
-                <div className="stat-value">₹{stats.today_revenue.total.toFixed(2)}</div>
-                <div className="stat-footer">Combined Cash & UPI today</div>
-              </div>
-              <div className="card stat-card">
-                <div className="stat-header">Monthly Revenue</div>
-                <div className="stat-value">₹{stats.current_month_revenue.toFixed(2)}</div>
-                <div className="stat-footer">Collection this month</div>
-              </div>
-            </div>
+      {/* Financials & Alerts Split Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="page-card" style={{ padding: '24px' }}>
+          <h4>Monthly Pass Financial Stats</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <span style={{ color: 'var(--text-muted)' }}>This Month's Total Revenue (Combined):</span>
+            <strong style={{ fontSize: '1.2rem', color: 'var(--success)' }}>₹{stats.month_revenue.toFixed(2)}</strong>
           </div>
-
-          {/* Alerts & Critical Notifications */}
-          <div>
-            <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Alerts & Tasks</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-              <div className="card" style={{ borderLeft: '4px solid var(--accent-danger)', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h4 style={{ color: 'var(--accent-danger)' }}>Expired Monthly Passes</h4>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.25rem 0' }}>{stats.expired_passes}</p>
-                </div>
-                <button className="btn btn-secondary" onClick={() => navigate('/search')} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>View</button>
-              </div>
-
-              <div className="card" style={{ borderLeft: '4px solid var(--accent-warning)', background: 'rgba(245, 158, 11, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h4 style={{ color: 'var(--accent-warning)' }}>Expiring Soon (&lt; 5 days)</h4>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.25rem 0' }}>{stats.expiring_soon}</p>
-                </div>
-                <button className="btn btn-secondary" onClick={() => navigate('/search')} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Check</button>
-              </div>
-
-              <div className="card" style={{ borderLeft: '4px solid var(--accent-info)', background: 'rgba(6, 182, 212, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h4 style={{ color: 'var(--accent-info)' }}>Today's Reminders Sent</h4>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.25rem 0' }}>{stats.today_reminder_count}</p>
-                </div>
-                <span style={{ fontSize: '1.5rem' }}>📱</span>
-              </div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <span style={{ color: 'var(--text-muted)' }}>All-Time Pass Revenue:</span>
+            <strong>₹{stats.monthly_stats.pass_revenue.toFixed(2)}</strong>
           </div>
-
-          {/* Monthly Subscription Section */}
-          <div className="card">
-            <h3 className="section-title" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>
-              Monthly Subscription Section
-            </h3>
-            <div className="dashboard-grid" style={{ marginTop: '1rem' }}>
-              <div className="card" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Total Monthly Customers</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.25rem 0' }}>{stats.total_monthly_customers}</div>
-              </div>
-              <div className="card" style={{ backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--accent-success)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Active Monthly Pass</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.25rem 0', color: 'var(--accent-success)' }}>{stats.active_monthly_customers}</div>
-              </div>
-              <div className="card" style={{ backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--accent-danger)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Expired Monthly Pass</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.25rem 0', color: 'var(--accent-danger)' }}>{stats.expired_monthly_customers}</div>
-              </div>
-              <div className="card" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Pending Payments</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.25rem 0', color: 'var(--accent-warning)' }}>{stats.pending_payments}</div>
-              </div>
-              <div className="card" style={{ backgroundColor: 'var(--bg-tertiary)', borderLeft: '3px solid var(--accent-primary)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Monthly Pass Collection</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.25rem 0' }}>₹{stats.monthly_revenue.toFixed(2)}</div>
-              </div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-muted)' }}>UPI / Cash Splits (Today):</span>
+            <span>UPI: ₹{stats.payment_stats.upi} | Cash: ₹{stats.payment_stats.cash}</span>
           </div>
-
         </div>
-      )}
+
+        <div className="page-card" style={{ padding: '24px', borderColor: stats.expiry_alerts.length > 0 ? 'rgba(239, 68, 68, 0.3)' : 'var(--border-color)' }}>
+          <h4 style={{ color: stats.expiry_alerts.length > 0 ? 'var(--danger)' : 'var(--text-main)', margin: '0 0 12px 0' }}>
+            ⚠️ Expiry Alerts (Within 5 Days)
+          </h4>
+          <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+            {stats.expiry_alerts.length > 0 ? (
+              <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                {stats.expiry_alerts.map((alert) => (
+                  <li key={alert.id} style={{ marginBottom: '8px' }}>
+                    Vehicle <strong style={{ color: 'var(--warning)' }}>{alert.vehicle__vehicle_number}</strong> expires on {alert.expiry_date} (WhatsApp: {alert.whatsapp_number})
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>All subscription memberships are up to date.</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
+
+const spinnerStyle = {
+  width: '24px',
+  height: '24px',
+  border: '3px solid rgba(255,255,255,0.1)',
+  borderTopColor: 'var(--accent-primary)',
+  borderRadius: '50%',
+  animation: 'spin 1s linear infinite'
+}
+
+export default Dashboard

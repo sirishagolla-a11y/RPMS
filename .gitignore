@@ -1,20 +1,39 @@
-# Python / Django
-backend/venv/
+# Database
+*.sqlite3
+backend/db.sqlite3
+
+# Environment & Secrets
+.env
+.env.local
+.env.*
+!*.env.example
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Django Static Build Artifacts
+backend/staticfiles/
+staticfiles/
+
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
-*.sqlite3
-.env
-.env.*
-!.env.example
-.env.local
+.venv/
+venv/
+ENV/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
 
-# Node / Vite
+# Frontend Dependencies & Build Output
 node_modules/
+frontend/node_modules/
 dist/
-dist-ssr/
-*.local
+frontend/dist/
 
-# OS Files
+# IDE & OS Files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
